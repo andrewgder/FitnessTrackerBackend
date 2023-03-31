@@ -5,6 +5,8 @@ const usersRouter = require("./users");
 const { getAllUsers, createUser, getUserByUsername } = require("../db/users");
 const { getPublicRoutinesByUser } = require("../db/routines");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const { JWT_SECRET = "andrew" } = process.env;
 
 // POST /api/users/login
 router.post("/login", async (req, res, next) => {

@@ -12,6 +12,7 @@ app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   next();
 });
+app.use(express.json());
 // app.listen(80, () => {
 //   console.log("Server started on port 80");
 // });

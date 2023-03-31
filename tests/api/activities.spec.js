@@ -26,7 +26,7 @@ const { getPublicRoutinesByActivity } = require("../../db");
 
 describe("/api/activities", () => {
   describe("GET /api/activities", () => {
-    xit("Just returns a list of all activities in the database", async () => {
+    it("Just returns a list of all activities in the database", async () => {
       // Create a fake activity to watch for
       const fakeActivity = await createFakeActivity(
         "Running",
@@ -42,7 +42,7 @@ describe("/api/activities", () => {
   });
 
   describe("POST /api/activities (*)", () => {
-    xit("Creates a new activity", async () => {
+    it("Creates a new activity", async () => {
       const { token } = await createFakeUserWithToken("bob");
 
       const activityData = {

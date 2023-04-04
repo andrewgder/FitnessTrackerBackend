@@ -2,13 +2,22 @@
 const express = require("express");
 const router = express.Router();
 const usersRouter = require("./users");
-const { getAllUsers, createUser, getUserByUsername } = require("../db/users");
-const { getPublicRoutinesByUser } = require("../db/routines");
+const {
+  getAllUsers,
+  createUser,
+  getUserByUsername,
+  getUserById,
+} = require("../db/users");
+const {
+  getPublicRoutinesByUser,
+  getAllRoutinesByUser,
+} = require("../db/routines");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { JWT_SECRET = "andrew" } = process.env;
+const { JWT_SECRET } = process.env;
 
 // POST /api/users/login
+
 router.post("/login", async (req, res, next) => {
   const { username, password } = req.body;
   if (!username || !password) {
@@ -21,8 +30,18 @@ router.post("/login", async (req, res, next) => {
     const user = await getUserByUsername(username);
     const hashedPassword = user.password;
     if (user && (await bcrypt.compare(password, hashedPassword))) {
-      const jwtToken = jwt.sign(user, JWT_SECRET);
-      res.send({ user: user, token: jwtToken, message: "you're logged in!" });
+      const jwtToken = jwt.sign({ id: user.id, username }, JWT_SECRET);
+      jwtToken;
+      const verifyJson = jwt.verify(jwtToken, JWT_SECRET);
+      verifyJson;
+      res.send({
+        user: {
+          id: user.id,
+          username,
+        },
+        token: jwtToken,
+        message: "you're logged in!",
+      });
     } else {
       next({
         name: "IncorrectCredentialsError",
@@ -72,51 +91,82 @@ router.post("/register", async (req, res, next) => {
   }
 });
 
-//  OG POST /api/users/register
+// GET /api/users/me
+router.get("/me", async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    res.status(401).send({
+      error: "401 - Unauthorized",
+      message: "You must be logged in to perform this action",
+      name: "UnauthorizedError",
+    });
+  }
 
-// // POST /api/users/login
-// router.post("/login", async (req, res, next) => {
-//   const { username, password } = req.body;
-//   console.log(req.body);
+  try {
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id;
+    const user = await getUserById(userId);
 
-//   // request must have both
-//   if (!username || !password) {
-//     next({
-//       name: "MissingCredentialsError",
-//       message: "Please supply both a username and password",
-//     });
-//   }
+    res.send({
+      id: user.id,
+      username: user.username,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
+// router.get("/me", async (req, res, next) => {
+//   const { username } = req.params;
+//   const authheader = req.headers.authorization;
+
+//   const user = await getUserByUsername(username);
+//   console.log();
 //   try {
-//     const user = await getUserByUsername(username);
-
-//     if (user && user.password == password) {
-//       // create token & return to user
-//       const token = jwt.sign(
-//         { id: user.id, username: user.username },
-//         process.env.JWT_SECRET
-//       );
-
-//       token;
-
-//       const recoveredData = jwt.verify(token, process.env.JWT_SECRET);
-
-//       recoveredData;
-//       res.send({ message: "you're logged in!", token });
+//     if (authheader) {
+//         const verifyJson = jwt.verify(authheader, JWT_SECRET);
+//         verifyJson;
+//       res.send(verify);
 //     } else {
-//       next({
-//         name: "IncorrectCredentialsError",
-//         message: "Username or password is incorrect",
+//       res.status(401).send({
+//         error: "401 - Unauthorized",
+//         message: "You must be logged in to perform this action",
+//         name: "UnauthorizedError",
 //       });
 //     }
 //   } catch (error) {
-//     console.log(error);
 //     next(error);
 //   }
 // });
 
-// GET /api/users/me
-
 // GET /api/users/:username/routines
+
+router.get("/:username/routines", async (req, res, next) => {
+  let returnRoutines;
+  const authHeader = req.headers.authorization;
+  const { username } = req.params;
+  try {
+    const publicRoutines = await getPublicRoutinesByUser({ username });
+
+    if (!authHeader) {
+      returnRoutines = publicRoutines;
+      res.send(returnRoutines);
+    } else {
+      const token = authHeader.split(" ")[1];
+      const verify = jwt.verify(token, JWT_SECRET);
+      if (verify.username !== username) {
+        returnRoutines = publicRoutines;
+        res.send(returnRoutines);
+      } else {
+        const userRoutines = await getAllRoutinesByUser({ username });
+        returnRoutines = userRoutines;
+        res.send(returnRoutines);
+      }
+    }
+  } catch ({ name, message }) {
+    next({ name, message });
+  }
+});
 
 module.exports = router;
